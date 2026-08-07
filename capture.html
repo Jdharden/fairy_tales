@@ -139,10 +139,10 @@
         <div class="big">CAPTURE</div>
         <div class="sub">LORD FARQUAAD'S FAIRY TALE ROUNDUP</div>
       </div>
-      <p>A shadowy creature appears in the swamp mist.<br>Name it to <b>CAPTURE</b> it!<br>20 creatures, no repeats — each shadow harder than the last.</p>
+      <p>A shadowy creature appears in the swamp mist.<br>Name it to <b>CAPTURE</b> it!</p>
       <button class="btn" id="startBtn">▶ START HUNT</button>
       <div class="farq">3 lives · tap the name (or keys 1–5) · save your score</div>
-      <div class="farq" id="recordLine">👑 Record to beat: MOLE — 18 captures</div>
+      <div class="farq" id="recordLine">👑 Record to beat: MOLE — 15 captures</div>
     </div>
 
     <!-- Game over / win -->
@@ -175,7 +175,7 @@
 
 // ====== CONFIG: paste your Google Apps Script /exec URL here ======
 const CONFIG = {
-  SCRIPT_URL: ''   // e.g. 'https://script.google.com/macros/s/XXXXXXXX/exec'
+  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzV6yoemX_P5D8WC4EUppvZp-tZAn9h3PnXzPGriv88EAjNJal-Cbo0Zz33Yf0DAe27gg/exec'
 };
 // ==================================================================
 
@@ -260,30 +260,6 @@ const INSULTS = [
 ];
 let lastInsult = -1;
 function pickInsult(){ let i; do{ i=Math.floor(Math.random()*INSULTS.length); } while(i===lastInsult && INSULTS.length>1); lastInsult=i; return INSULTS[i]; }
-
-// A little lore shown once a creature's identity is revealed
-const FACTS = {
-  'Shrek':"A grumpy but soft-hearted ogre who just wants his swamp all to himself.",
-  'Donkey':"A chatty, loyal donkey who never, ever stops talking.",
-  'Puss in Boots':"A swashbuckling cat with a feathered hat and irresistible big eyes.",
-  'Gingerbread Man':"A brave little cookie — just don't touch the gumdrop buttons!",
-  'Dragon':"A fearsome fire-breathing dragon with a surprisingly tender heart.",
-  'Pinocchio':"A wooden puppet whose nose grows longer with every fib he tells.",
-  'Big Bad Wolf':"The huffing, puffing wolf — often caught wearing grandma's nightie.",
-  'Fiona':"A princess by day and an ogre by night, and far tougher than she looks.",
-  'Three Blind Mice':"Three sightless mice who bumble around the swamp together.",
-  'Magic Mirror':"The all-knowing mirror who answers the kingdom's biggest questions.",
-  'Fairy Godmother':"A glamorous fairy who grants wishes — for exactly the right price.",
-  'Prince Charming':"A vain prince convinced he's the hero of every fairy tale.",
-  'Humpty Dumpty':"An egg who sat on a wall — and famously took a great fall.",
-  'Red Riding Hood':"A girl in a red hood, off through the woods to grandma's house.",
-  'Robin Hood':"An outlaw archer who robs from the rich to give to the poor.",
-  'Wicked Witch':"A cackling, broom-riding witch with a real taste for trouble.",
-  'Unicorn':"A magical horse crowned with a single spiraled horn.",
-  'Frog Prince':"A prince stuck in frog form, still waiting on a royal kiss.",
-  'Captain Hook':"A pirate captain with a hook for a hand and a fear of crocodiles.",
-  'Rapunzel':"A tower-bound maiden with impossibly, impossibly long hair.",
-};
 
 const TARGETS = Object.keys(ART);   // 20 characters that can appear as silhouettes
 // extra plausible answers that only ever appear as decoys (no art needed)
@@ -639,13 +615,13 @@ function timeUp(){
   Chip.wrong(); flash('rgba(229,72,77,0.4)'); updateHUD(); reveal(false,'TIME UP!');
 }
 function reveal(ok,label){
-  state.scene='reveal'; showBanner(label+'  '+state.target, ok, ok?null:pickInsult(), FACTS[state.target]);
+  state.scene='reveal'; showBanner(label+'  '+state.target, ok, ok?null:pickInsult());
   setTimeout(()=>{ hideBanner();
     if(state.lives<=0){ endGame(false); return; }
     state.idx++;
     if(state.idx>=ROUNDS){ endGame(true); return; }
     if(state.idx%TIER_SIZE===0) showLevelUp(newRound); else newRound();
-  }, ok?2700:3400);
+  }, ok?1700:2900);
 }
 function showLevelUp(cb){
   const lv=tier()+1;
@@ -698,8 +674,8 @@ function endGame(won){
 }
 
 // ---------- leaderboard ----------
-// Seeded record to beat: MOLE with 18 captures. Ranking is by captures, then score.
-const SEED=[{name:'MOLE',score:2460,rounds:18}];
+// Seeded record to beat: MOLE with 15 captures. Ranking is by captures, then score.
+const SEED=[{name:'MOLE',score:2050,rounds:15}];
 function boardSort(a,b){ return ((b.rounds|0)-(a.rounds|0)) || ((b.score|0)-(a.score|0)); }
 let localBoard=null; try{ localBoard=JSON.parse(localStorage.getItem('capture_lb')||'null'); }catch(e){}
 if(!localBoard || !localBoard.length) localBoard=SEED.slice();
