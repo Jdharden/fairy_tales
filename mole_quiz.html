@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#D9DED3">
+<title>The Mole — Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Archivo+Black&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#D9DED3;
+    --card:#F5F6F1;
+    --ink:#1A1D19;
+    --muted:#6B7268;
+    --line:#B9BFB2;
+    --oxblood:#7A1F2B;
+    --ochre:#B98A2E;
+    --focus:#2E4A7D;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Archivo',system-ui,sans-serif;
+    font-size:16px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 1px 1px, rgba(26,29,25,.055) 1px, transparent 0);
+    background-size:22px 22px;
+  }
+  .mono{font-family:'Courier Prime',ui-monospace,monospace}
+
+  /* ---------- shell ---------- */
+  .shell{max-width:1080px;margin:0 auto;padding:0 20px 72px}
+
+  .topbar{
+    display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    padding:22px 0 12px;border-bottom:1px solid var(--line);flex-wrap:wrap;
+  }
+  .topbar-id{
+    font-family:'Courier Prime',monospace;font-size:12px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  .topbar-id b{color:var(--oxblood);font-weight:700}
+  .topbar-count{font-family:'Courier Prime',monospace;font-size:12px;letter-spacing:.18em;color:var(--muted)}
+  .meter{height:2px;background:var(--line);position:relative;margin-bottom:38px}
+  .meter i{position:absolute;inset:0 auto 0 0;background:var(--oxblood);width:0;transition:width .45s cubic-bezier(.2,.7,.3,1)}
+
+  /* ---------- type ---------- */
+  .display{
+    font-family:'Archivo Black',sans-serif;font-weight:400;
+    letter-spacing:-.02em;line-height:.95;text-transform:uppercase;
+    margin:0;
+  }
+  .eyebrow{
+    font-family:'Courier Prime',monospace;font-size:11px;letter-spacing:.24em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 14px;
+  }
+  .lede{max-width:46ch;color:#3B4038;margin:20px 0 0;font-size:16.5px}
+
+  /* ---------- layout ---------- */
+  .split{display:grid;grid-template-columns:1.4fr .85fr;gap:40px;align-items:start}
+  .screen{display:none}
+  .screen.is-on{display:block;animation:lift .5s cubic-bezier(.2,.7,.3,1) both}
+  @keyframes lift{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  /* ---------- intro ---------- */
+  .intro-title{font-size:clamp(44px,8vw,86px)}
+  .intro-title em{font-style:normal;color:var(--oxblood)}
+  .namefield{margin-top:34px;max-width:400px}
+  label.fieldlabel{
+    display:block;font-family:'Courier Prime',monospace;font-size:11px;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;
+  }
+  input[type=text]{
+    width:100%;padding:13px 14px;border:1px solid var(--ink);background:var(--card);
+    font-family:'Archivo',sans-serif;font-size:17px;color:var(--ink);border-radius:2px;
+  }
+  input[type=text]:focus-visible{outline:3px solid var(--focus);outline-offset:1px}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    display:inline-flex;align-items:center;gap:12px;cursor:pointer;
+    background:var(--ink);color:var(--card);border:1px solid var(--ink);border-radius:2px;
+    font-family:'Archivo',sans-serif;font-size:13px;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;padding:15px 24px;transition:background .16s,color .16s;
+  }
+  .btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+  .btn[disabled]{opacity:.32;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--ink)}
+  .btn-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:34px}
+
+  /* ---------- question ---------- */
+  .qnum{
+    font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:.1em;
+    color:var(--oxblood);margin:0 0 12px;
+  }
+  .qtext{font-family:'Archivo',sans-serif;font-weight:600;font-size:clamp(24px,3.4vw,34px);line-height:1.15;margin:0 0 28px;letter-spacing:-.01em}
+  fieldset.opts{border:0;margin:0;padding:0}
+  fieldset.opts legend{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .opt{display:block;position:relative;margin-bottom:10px}
+  .opt input{position:absolute;opacity:0;width:0;height:0}
+  .opt span{
+    display:flex;align-items:center;gap:16px;padding:15px 18px;cursor:pointer;
+    background:var(--card);border:1px solid var(--line);border-radius:2px;
+    font-size:17px;transition:border-color .14s,background .14s,transform .14s;
+  }
+  .opt span::before{
+    content:attr(data-key);font-family:'Courier Prime',monospace;font-size:12px;
+    width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;
+    border:1px solid var(--line);color:var(--muted);border-radius:50%;
+  }
+  .opt input:focus-visible + span{outline:3px solid var(--focus);outline-offset:2px}
+  .opt input:checked + span{border-color:var(--ink);background:var(--ink);color:var(--card)}
+  .opt input:checked + span::before{border-color:var(--card);color:var(--card);background:var(--oxblood)}
+
+  /* ---------- dossier (the signature) ---------- */
+  .dossier{background:var(--card);border:1px solid var(--ink);border-radius:2px;position:sticky;top:20px}
+  .dossier-head{
+    padding:14px 16px;border:0;border-bottom:1px solid var(--ink);
+    background:var(--card);color:inherit;font:inherit;text-align:left;width:100%;
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+  .chev{display:none}
+  .dossier-head strong{
+    font-family:'Courier Prime',monospace;font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;font-weight:700;
+  }
+  .dossier-head em{font-style:normal;font-family:'Courier Prime',monospace;font-size:11px;color:var(--oxblood);letter-spacing:.1em}
+  .rows{padding:6px 16px 16px}
+  .row{padding:11px 0;border-bottom:1px dotted var(--line)}
+  .row:last-child{border-bottom:0}
+  .row .k{
+    font-family:'Courier Prime',monospace;font-size:10px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted);line-height:1.4;margin-bottom:6px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .row .body{display:flex;align-items:center;gap:4px}
+  .row .v{position:relative;flex:1;min-height:19px;font-size:14.5px;font-weight:500;line-height:1.3}
+  .row .v u{text-decoration:none;opacity:0;transition:opacity .3s .18s}
+  .row .v i{
+    position:absolute;inset:0;background:var(--ink);transform-origin:right center;
+    transition:transform .38s cubic-bezier(.5,0,.2,1);
+  }
+  .row.is-set .v u{opacity:1}
+  .row.is-set .v i{transform:scaleX(0)}
+  .row .edit{
+    background:none;border:0;padding:0 0 0 10px;cursor:pointer;color:var(--oxblood);
+    font-family:'Courier Prime',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  }
+  .row .edit:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+  .dossier-foot{
+    padding:12px 16px;border-top:1px solid var(--ink);background:var(--paper);
+    font-family:'Courier Prime',monospace;font-size:10.5px;letter-spacing:.1em;color:var(--muted);
+  }
+
+  /* review + done */
+  .review-grid{max-width:640px}
+  .review-grid .k{font-size:11px}
+  .review-grid .v{font-size:16px}
+  .note{
+    margin-top:22px;padding:12px 14px;border-left:3px solid var(--ochre);background:rgba(185,138,46,.1);
+    font-size:14px;color:#4A4235;
+  }
+  .alert{
+    margin-top:22px;padding:12px 14px;border-left:3px solid var(--oxblood);
+    background:rgba(122,31,43,.09);font-size:14px;color:#5C1A22;
+  }
+  .alert:empty,.note:empty{display:none}
+  .done-mark{
+    display:inline-block;border:2px solid var(--oxblood);color:var(--oxblood);
+    font-family:'Courier Prime',monospace;font-weight:700;font-size:13px;letter-spacing:.28em;
+    padding:9px 16px;transform:rotate(-2.5deg);margin-bottom:26px;
+  }
+
+  /* ---------- mobile ---------- */
+  @media (max-width:820px){
+    .shell{padding:0 16px 24px}
+    .split{grid-template-columns:1fr;gap:22px}
+    .qside{order:2}
+    .dossier{position:static;order:1}
+    .intro-dossier{display:none}
+
+    /* profile card folds up so the question stays above the fold */
+    .dossier-head{width:100%;cursor:pointer;background:var(--card);font:inherit;text-align:left}
+    .chev{display:inline-block;transition:transform .22s;font-size:11px;color:var(--muted)}
+    .dossier.is-shut .rows,.dossier.is-shut .dossier-foot{display:none}
+    .dossier.is-shut .chev{transform:rotate(-90deg)}
+
+    .qtext{margin-bottom:20px}
+    .opt span{padding:16px 16px;font-size:16.5px;min-height:56px}
+    .row .edit{padding:8px 0 8px 12px}
+
+    /* controls pinned within reach of a thumb */
+    .qactions{
+      position:sticky;bottom:0;z-index:10;margin-top:22px;
+      background:var(--paper);border-top:1px solid var(--line);
+      padding:12px 0 calc(12px + env(safe-area-inset-bottom,0px));
+    }
+    .qactions .btn{flex:1;justify-content:center;padding:17px 14px}
+    .intro-actions .btn,.review-actions .btn{width:100%;justify-content:center;padding:17px 14px}
+    .review-actions{gap:10px}
+    .intro-title{font-size:clamp(40px,13vw,60px)}
+    .lede{font-size:16px}
+    .namefield{max-width:none}
+  }
+
+  /* keep hover effects off touch screens, where they stick */
+  @media (hover:hover){
+    .btn:hover:not([disabled]){background:var(--oxblood);border-color:var(--oxblood)}
+    .btn-ghost:hover{background:var(--ink);color:var(--card)}
+    .opt:hover span{border-color:var(--ink);transform:translateX(3px)}
+    .row .edit:hover{text-decoration:underline}
+  }
+  button,label.opt{-webkit-tap-highlight-color:rgba(122,31,43,.14)}
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <div class="topbar-id">Case file · <b id="roundName">The Mole</b></div>
+    <div class="topbar-count mono" id="counter">Not started</div>
+  </div>
+  <div class="meter"><i id="meterFill"></i></div>
+
+  <!-- ============ INTRO ============ -->
+  <section class="screen is-on" id="scr-intro">
+    <div class="split">
+      <div>
+        <p class="eyebrow">Ten questions · One suspect</p>
+        <h1 class="display intro-title">Who is<br>the <em>Mole</em>?</h1>
+        <p class="lede">Every answer you get right counts toward staying in the game. Every answer you get wrong brings you closer to the exit. Answer all ten, then submit.</p>
+        <div class="namefield">
+          <label class="fieldlabel" for="playerName">Your name</label>
+          <input type="text" id="playerName" autocomplete="name" placeholder="Enter your name">
+        </div>
+        <div class="btn-row intro-actions">
+          <button class="btn" id="startBtn">Open the file</button>
+        </div>
+        <div class="alert" id="introAlert" role="alert"></div>
+      </div>
+      <aside class="dossier intro-dossier" aria-hidden="true">
+        <div class="dossier-head"><strong>Suspect profile</strong><em>Sealed</em></div>
+        <div class="rows" id="introRows"></div>
+        <div class="dossier-foot">All fields redacted</div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="screen" id="scr-quiz">
+    <div class="split">
+      <div class="qside">
+        <p class="qnum mono" id="qNum">Question 01</p>
+        <h2 class="qtext" id="qText"></h2>
+        <fieldset class="opts">
+          <legend id="qLegend"></legend>
+          <div id="qOpts"></div>
+        </fieldset>
+        <div class="btn-row qactions">
+          <button class="btn btn-ghost" id="backBtn">← Back</button>
+          <button class="btn" id="nextBtn" disabled>Lock in answer</button>
+        </div>
+      </div>
+      <aside class="dossier" id="dossier">
+        <button class="dossier-head" id="dossierToggle" type="button" aria-expanded="true" aria-controls="quizRows">
+          <strong>Suspect profile</strong>
+          <span style="display:flex;align-items:center;gap:8px">
+            <em id="dossierCount"></em><span class="chev" aria-hidden="true">▾</span>
+          </span>
+        </button>
+        <div class="rows" id="quizRows"></div>
+        <div class="dossier-foot" id="dossierFoot">Redaction lifts as you answer</div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ REVIEW ============ -->
+  <section class="screen" id="scr-review">
+    <p class="eyebrow">Final check</p>
+    <h2 class="display" style="font-size:clamp(30px,5vw,52px)">Your profile<br>of the Mole</h2>
+    <p class="lede">Change anything you want. Once you submit, your answers are locked.</p>
+    <div class="review-grid rows" id="reviewRows" style="margin-top:30px;border:1px solid var(--ink);background:var(--card);padding:8px 18px 14px;border-radius:2px"></div>
+    <div class="btn-row review-actions">
+      <button class="btn" id="submitBtn">Submit my quiz</button>
+      <button class="btn btn-ghost" id="reviewBackBtn">Back to questions</button>
+    </div>
+    <div class="alert" id="submitAlert" role="alert"></div>
+  </section>
+
+  <!-- ============ DONE ============ -->
+  <section class="screen" id="scr-done">
+    <div class="done-mark">Quiz recorded</div>
+    <h2 class="display" style="font-size:clamp(32px,5.5vw,56px)" id="doneTitle">Your answers<br>are locked in</h2>
+    <p class="lede" id="doneNote">Nothing more to do. Results are revealed at the execution.</p>
+  </section>
+
+</div>
+
+<script>
+/* ==========================================================
+   QUIZ CONFIG — edit this block to change the quiz
+   ========================================================== */
+const QUIZ = {
+  "round": "Mole Quiz",
+  "endpoint": "https://script.google.com/macros/s/AKfycbwQcPa3WWpoWNETvF6AZD-YwXja1YNw52gQdt_W7N3DzlYKWaUfNLrzPdj-GEbaJGw8/exec",
+  "questions": [
+    {
+      "text": "Where was the Mole born?",
+      "options": [
+        "Australia",
+        "U.S.",
+        "Taiwan",
+        "Italy",
+        "China",
+        "None of the above"
+      ]
+    },
+    {
+      "text": "What is one of the Mole's hobbies?",
+      "options": [
+        "Natural dye",
+        "Bouldering",
+        "Woodworking",
+        "Biking",
+        "Backpacking"
+      ]
+    },
+    {
+      "text": "Does the Mole wear glasses?",
+      "options": [
+        "Yes",
+        "No"
+      ]
+    },
+    {
+      "text": "How many languages does the Mole speak?",
+      "options": [
+        "One",
+        "Two",
+        "Three",
+        "Four",
+        "Five"
+      ]
+    },
+    {
+      "text": "Which city has the Mole lived in?",
+      "options": [
+        "Chicago",
+        "New York City",
+        "L.A.",
+        "Toronto",
+        "San Antonio"
+      ]
+    },
+    {
+      "text": "What pets does the Mole have?",
+      "options": [
+        "Dogs",
+        "Cats",
+        "Bunnies",
+        "Worms",
+        "None of the above"
+      ]
+    },
+    {
+      "text": "What month is Mole's birthday?",
+      "options": [
+        "March",
+        "July",
+        "August",
+        "September",
+        "October"
+      ]
+    },
+    {
+      "text": "Does the Mole run a blog?",
+      "options": [
+        "Yes",
+        "No"
+      ]
+    },
+    {
+      "text": "Has the Mole run a marathon?",
+      "options": [
+        "Yes",
+        "No"
+      ]
+    },
+    {
+      "text": "Is the Mole wearing a wig?",
+      "options": [
+        "Yes",
+        "No"
+      ]
+    }
+  ]
+};
+/* ========================================================== */
+
+var KEYS = ['A','B','C','D','E','F'];
+var state = { i: 0, player: '', answers: new Array(QUIZ.questions.length).fill(null), sent: false };
+
+function $(id){ return document.getElementById(id); }
+function show(name){
+  var s = document.querySelectorAll('.screen');
+  for (var i=0;i<s.length;i++) s[i].classList.remove('is-on');
+  $('scr-'+name).classList.add('is-on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function answered(){ return state.answers.filter(function(a){return a!==null;}).length; }
+
+/* ---- dossier rendering ---- */
+function buildRows(container, editable){
+  container.innerHTML = '';
+  QUIZ.questions.forEach(function(q, idx){
+    var row = document.createElement('div');
+    row.className = 'row' + (state.answers[idx]!==null ? ' is-set' : '');
+    var k = document.createElement('div');
+    k.className = 'k';
+    k.textContent = String(idx+1).padStart(2,'0') + ' · ' + q.text;
+    var body = document.createElement('div');
+    body.className = 'body';
+    var v = document.createElement('div');
+    v.className = 'v';
+    var u = document.createElement('u');
+    u.textContent = state.answers[idx]!==null ? state.answers[idx] : '—';
+    var bar = document.createElement('i');
+    v.appendChild(u); v.appendChild(bar);
+    body.appendChild(v);
+    if (editable){
+      var b = document.createElement('button');
+      b.className = 'edit'; b.type = 'button'; b.textContent = 'Change';
+      b.setAttribute('aria-label','Change answer to question '+(idx+1));
+      b.onclick = function(){ state.i = idx; renderQuestion(); show('quiz'); };
+      body.appendChild(b);
+    }
+    row.appendChild(k); row.appendChild(body);
+    container.appendChild(row);
+  });
+}
+function refreshDossier(){
+  buildRows($('quizRows'), false);
+  $('dossierCount').textContent = answered() + '/' + QUIZ.questions.length;
+}
+
+/* ---- question rendering ---- */
+function renderQuestion(){
+  var q = QUIZ.questions[state.i];
+  var n = state.i + 1, total = QUIZ.questions.length;
+  $('qNum').textContent = 'Question ' + (n<10?'0':'') + n;
+  $('qText').textContent = q.text;
+  $('qLegend').textContent = q.text;
+  $('counter').textContent = (n<10?'0':'') + n + ' / ' + total;
+  $('meterFill').style.width = (answered()/total*100) + '%';
+
+  var wrap = $('qOpts');
+  wrap.innerHTML = '';
+  q.options.forEach(function(opt, j){
+    var label = document.createElement('label');
+    label.className = 'opt';
+    var input = document.createElement('input');
+    input.type = 'radio'; input.name = 'q'+state.i; input.value = opt;
+    if (state.answers[state.i] === opt) input.checked = true;
+    input.onchange = function(){
+      state.answers[state.i] = opt;
+      $('nextBtn').disabled = false;
+      refreshDossier();
+      $('meterFill').style.width = (answered()/total*100) + '%';
+    };
+    var span = document.createElement('span');
+    span.setAttribute('data-key', KEYS[j] || (j+1));
+    span.appendChild(document.createTextNode(opt));
+    label.appendChild(input); label.appendChild(span);
+    wrap.appendChild(label);
+  });
+
+  $('nextBtn').disabled = state.answers[state.i] === null;
+  $('nextBtn').textContent = (state.i === total-1) ? 'Review my answers' : 'Lock in answer';
+  $('backBtn').style.display = state.i === 0 ? 'none' : '';
+  refreshDossier();
+}
+
+/* ---- flow ---- */
+$('startBtn').onclick = function(){
+  var name = $('playerName').value.trim();
+  if (!name){
+    $('introAlert').textContent = 'Enter your name so your quiz can be scored.';
+    $('playerName').focus();
+    return;
+  }
+  $('introAlert').textContent = '';
+  state.player = name;
+  renderQuestion();
+  show('quiz');
+};
+$('playerName').addEventListener('keydown', function(e){ if (e.key==='Enter') $('startBtn').click(); });
+
+$('nextBtn').onclick = function(){
+  if (state.answers[state.i] === null) return;
+  if (state.i === QUIZ.questions.length - 1){
+    if (answered() < QUIZ.questions.length){
+      for (var i=0;i<state.answers.length;i++){ if (state.answers[i]===null){ state.i=i; renderQuestion(); return; } }
+    }
+    buildRows($('reviewRows'), true);
+    $('counter').textContent = 'Ready to submit';
+    show('review');
+  } else {
+    state.i++;
+    renderQuestion();
+  }
+};
+$('backBtn').onclick = function(){ if (state.i>0){ state.i--; renderQuestion(); } };
+$('reviewBackBtn').onclick = function(){ state.i = 0; renderQuestion(); show('quiz'); };
+
+/* ---- submit ---- */
+$('submitBtn').onclick = function(){
+  if (state.sent) return;
+  var btn = this;
+  var alertBox = $('submitAlert');
+  alertBox.textContent = '';
+
+  if (!QUIZ.endpoint || QUIZ.endpoint.indexOf('http') !== 0){
+    alertBox.textContent = 'No Google Sheet is connected yet. Add your Apps Script web app URL to the endpoint field in this file, then reload.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  var payload = {
+    round: QUIZ.round,
+    player: state.player,
+    questions: QUIZ.questions.map(function(q){ return q.text; }),
+    answers: state.answers,
+    submittedAt: new Date().toISOString()
+  };
+
+  fetch(QUIZ.endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r){ return r.json().catch(function(){ return {status:'ok'}; }); })
+  .then(function(res){
+    if (res && res.status === 'error') throw new Error(res.message || 'The sheet rejected the entry.');
+    state.sent = true;
+    $('doneTitle').innerHTML = state.player.replace(/[<>&]/g,'') + ',<br>your answers<br>are locked in';
+    $('counter').textContent = 'Submitted';
+    $('meterFill').style.width = '100%';
+    show('done');
+  })
+  .catch(function(err){
+    btn.disabled = false;
+    btn.textContent = 'Submit my quiz';
+    alertBox.textContent = 'That did not reach the sheet: ' + err.message + ' Check that the Apps Script is deployed with access set to Anyone, then try again.';
+  });
+};
+
+/* ---- profile card folds on small screens ---- */
+var mq = window.matchMedia('(max-width:820px)');
+function applyFold(shut){
+  $('dossier').classList.toggle('is-shut', shut);
+  $('dossierToggle').setAttribute('aria-expanded', shut ? 'false' : 'true');
+}
+function syncFold(){ applyFold(mq.matches); }
+$('dossierToggle').onclick = function(){
+  if (!mq.matches) return;                     // always open on wide screens
+  applyFold(!$('dossier').classList.contains('is-shut'));
+};
+if (mq.addEventListener) mq.addEventListener('change', syncFold);
+else if (mq.addListener) mq.addListener(syncFold);
+syncFold();
+
+/* ---- boot ---- */
+$('roundName').textContent = QUIZ.round;
+document.title = QUIZ.round + ' — Quiz';
+buildRows($('introRows'), false);
+</script>
+</body>
+</html>
