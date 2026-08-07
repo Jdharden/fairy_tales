@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>CAPTURE — A Fairy Tale Silhouette Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0f1a; --panel:#141a2e; --ink:#e9f0ff; --gold:#ffd54a; --gold2:#e0a51e;
+    --red:#e5484d; --green:#5ce06a; --sil:#0a0c16; --stage:#8fb96b; --stage2:#6f9a4f; --line:#243055;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:radial-gradient(ellipse at 50% -10%, #1c2748 0%, var(--bg) 60%), var(--bg);
+    color:var(--ink); font-family:'Press Start 2P', ui-monospace, 'Courier New', monospace;
+    display:flex; align-items:center; justify-content:center; min-height:100%; overflow:hidden;
+    user-select:none; image-rendering:pixelated; overscroll-behavior:none; touch-action:manipulation;
+  }
+  #app{ width:min(96vw, 520px); height:100vh; height:100dvh; display:flex; flex-direction:column;
+    justify-content:center; gap:12px;
+    padding:calc(8px + env(safe-area-inset-top)) 0 calc(10px + env(safe-area-inset-bottom)); }
+  .title-bar{ text-align:center; line-height:1.5; }
+  .title-bar .big{ font-size:clamp(26px,8vw,46px); color:var(--gold);
+    text-shadow:0 3px 0 var(--gold2), 0 6px 0 #7a5a08, 3px 6px 0 #000; letter-spacing:2px; }
+  .title-bar .sub{ font-size:9px; color:#9fb0d8; margin-top:8px; }
+  #hud{ display:none; justify-content:space-between; align-items:center; font-size:9px; padding:0 2px; }
+  #hud .cell{ display:flex; flex-direction:column; gap:5px; }
+  #hud .lab{ color:#7f8fbf; font-size:7px; }
+  #hud .val{ color:var(--gold); font-size:12px; }
+  #lives{ color:var(--red); letter-spacing:2px; font-size:12px; }
+  #stageWrap{ position:relative; width:min(100%, calc(100dvh - 300px)); max-width:520px; aspect-ratio:1/1;
+    margin:0 auto; align-self:center; flex:0 0 auto; border:4px solid #000; border-radius:8px;
+    overflow:hidden; box-shadow:0 0 0 4px var(--line), 0 10px 0 #000, inset 0 0 60px rgba(0,0,0,.35);
+    background:linear-gradient(180deg, var(--stage) 0%, var(--stage2) 100%); }
+  #game{ width:100%; height:100%; display:block; image-rendering:pixelated; touch-action:none; }
+  #timerWrap{ height:14px; border:3px solid #000; background:#0d1122; border-radius:4px; overflow:hidden; }
+  #timerBar{ height:100%; width:100%; background:linear-gradient(90deg,var(--green),var(--gold)); }
+  #choices{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .choice{ font-family:inherit; font-size:clamp(9px,2.7vw,11px); color:var(--ink); background:var(--panel);
+    border:3px solid #000; border-bottom:6px solid #000; border-radius:6px; padding:14px 8px; cursor:pointer;
+    line-height:1.4; box-shadow:inset 0 0 0 2px var(--line); transition:transform .04s;
+    touch-action:manipulation; min-height:48px; display:flex; align-items:center; justify-content:center; text-align:center; }
+  .choice:hover{ background:#1e2946; }
+  .choice:active{ transform:translateY(3px); border-bottom-width:3px; }
+  .choice.correct{ background:#3a5f2b; border-color:#0a1c05; color:#eaffea; box-shadow:inset 0 0 0 2px var(--green); }
+  .choice.wrong{ background:#5a1416; border-color:#2a0708; color:#ffdede; box-shadow:inset 0 0 0 2px var(--red); }
+  .choice.dim{ opacity:.35; }
+  .choice.span2{ grid-column:span 2; }
+  .btn{ font-family:inherit; font-size:12px; color:#101010; letter-spacing:1px; touch-action:manipulation;
+    background:linear-gradient(180deg,var(--gold),var(--gold2)); border:3px solid #000; border-bottom:7px solid #000;
+    border-radius:8px; padding:16px 20px; cursor:pointer; box-shadow:0 4px 0 rgba(0,0,0,.4); }
+  .btn:active{ transform:translateY(3px); border-bottom-width:4px; }
+  .btn.small{ font-size:9px; padding:11px 14px; background:linear-gradient(180deg,#2c3a63,#1a2340); color:var(--ink); border-bottom-width:5px; }
+  .btn:disabled{ opacity:.5; cursor:default; }
+  .overlay{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:13px; text-align:center; padding:16px; overflow:auto;
+    background:linear-gradient(180deg, rgba(5,8,18,.86), rgba(5,8,18,.95)); }
+  .overlay h2{ font-size:20px; margin:0; color:var(--gold); text-shadow:2px 2px 0 #000; }
+  .overlay p{ font-size:9px; color:#c3cff0; line-height:1.9; margin:0; max-width:360px; }
+  .hidden{ display:none !important; }
+  .farq{ font-size:8px; color:#c9a6ff; }
+  #topRow{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  #topRow .name{ font-size:11px; color:var(--gold); }
+  .flash{ position:absolute; inset:0; pointer-events:none; opacity:0; }
+  .footer{ text-align:center; font-size:7px; color:#5c6a95; line-height:1.8; }
+  a{ color:#8fb0ff; }
+  /* leaderboard */
+  #saveRow{ display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap; }
+  #nameInput{ font-family:inherit; font-size:16px; text-transform:uppercase; color:var(--ink); background:#0d1122;
+    border:3px solid #000; box-shadow:inset 0 0 0 2px var(--line); border-radius:6px; padding:11px; width:200px; max-width:70vw;
+    text-align:center; letter-spacing:2px; }
+  #nameInput::placeholder{ color:#4a5987; letter-spacing:1px; }
+  #boardTitle{ font-size:8px; color:#8f9fce; }
+  #board{ width:100%; max-width:340px; font-size:9px; display:flex; flex-direction:column; gap:4px; max-height:150px; overflow:auto; }
+  .brow{ display:flex; justify-content:space-between; gap:8px; background:rgba(255,255,255,.05); padding:6px 8px; border-radius:4px; }
+  .brow .rk{ color:var(--gold); width:24px; text-align:left; }
+  .brow .nm{ flex:1; text-align:left; color:#dfe8ff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .brow .sc{ color:var(--green); }
+  .brow.me{ box-shadow:inset 0 0 0 2px var(--gold); }
+
+  /* ---------- mobile / small screens ---------- */
+  @media (max-height:720px){
+    #app{ gap:8px; }
+    #stageWrap{ width:min(100%, calc(100dvh - 250px)); }
+    .footer{ font-size:6px; line-height:1.5; }
+    #choices{ gap:8px; }
+    .choice{ padding:12px 6px; min-height:44px; }
+  }
+  @media (max-height:600px){
+    .footer{ display:none; }
+    #stageWrap{ width:min(100%, calc(100dvh - 210px)); }
+  }
+  @media (max-width:560px){
+    .overlay{ gap:10px; padding:12px; }
+    .overlay .big{ font-size:clamp(24px,9vw,40px); }
+    .overlay p{ font-size:8px; line-height:1.8; }
+    .overlay .sub{ font-size:8px; }
+    .farq{ font-size:7px; }
+    #board{ max-height:32vh; }
+    #hud .val{ font-size:11px; } #lives{ font-size:11px; }
+  }
+  /* landscape phones: stage on the left, controls stacked on the right */
+  @media (orientation:landscape) and (max-height:560px){
+    #app{ width:100%; max-width:none; height:100dvh; display:grid; gap:6px 12px;
+      padding:6px calc(6px + env(safe-area-inset-right)) 6px calc(6px + env(safe-area-inset-left));
+      grid-template-columns:auto 1fr; grid-template-rows:auto auto auto 1fr auto;
+      grid-template-areas:"stage top" "stage hud" "stage timer" "stage choices" "stage footer"; }
+    #stageWrap{ grid-area:stage; width:auto; height:min(100%, calc(100dvh - 12px)); max-width:none; align-self:center; }
+    #topRow{ grid-area:top; } #hud{ grid-area:hud; } #timerWrap{ grid-area:timer; }
+    #choices{ grid-area:choices; align-content:start; } .footer{ grid-area:footer; display:none; }
+    #hud{ font-size:8px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topRow">
+    <div class="title-bar" style="text-align:left"><span class="name">👑 CAPTURE</span></div>
+    <button id="muteBtn" class="btn small">♪ ON</button>
+  </div>
+
+  <div id="hud">
+    <div class="cell"><span class="lab">SCORE</span><span class="val" id="score">0</span></div>
+    <div class="cell" style="text-align:center"><span class="lab">CAPTURE</span><span class="val" id="round">1/20</span><span class="lab" id="levTag" style="color:#ffb020">LEVEL 1</span></div>
+    <div class="cell" style="text-align:right"><span class="lab">LIVES</span><span id="lives">♥♥♥</span></div>
+  </div>
+
+  <div id="stageWrap">
+    <canvas id="game" width="480" height="480"></canvas>
+    <div class="flash" id="flash"></div>
+
+    <!-- Title -->
+    <div class="overlay" id="titleOverlay">
+      <div class="title-bar">
+        <div class="big">CAPTURE</div>
+        <div class="sub">LORD FARQUAAD'S FAIRY TALE ROUNDUP</div>
+      </div>
+      <p>A shadowy creature appears in the swamp mist.<br>Name it to <b>CAPTURE</b> it!<br>20 creatures, no repeats — each shadow harder than the last.</p>
+      <button class="btn" id="startBtn">▶ START HUNT</button>
+      <div class="farq">3 lives · tap the name (or keys 1–5) · save your score</div>
+      <div class="farq" id="recordLine">👑 Record to beat: MOLE — 18 captures</div>
+    </div>
+
+    <!-- Game over / win -->
+    <div class="overlay hidden" id="overOverlay">
+      <div class="title-bar"><div class="big" id="overTitle" style="font-size:32px">GAME OVER</div></div>
+      <p id="overStats"></p>
+      <div id="saveRow">
+        <input id="nameInput" maxlength="14" placeholder="YOUR NAME" autocomplete="off" />
+        <button class="btn small" id="saveBtn">SAVE SCORE</button>
+      </div>
+      <div id="boardTitle">🏆 TOP HUNTERS</div>
+      <div id="board"></div>
+      <button class="btn" id="againBtn">▶ HUNT AGAIN</button>
+    </div>
+  </div>
+
+  <div id="timerWrap"><div id="timerBar"></div></div>
+  <div id="choices"></div>
+
+  <div class="footer">A fan-made tribute · Built for GitHub Pages · Shrek &amp; characters © DreamWorks</div>
+</div>
+
+<script>
+/* ============================================================
+   CAPTURE — 32-bit fairy-tale silhouette guessing game
+   20 rounds, no repeats, Google Sheets leaderboard.
+   ============================================================ */
+(() => {
+'use strict';
+
+// ====== CONFIG: paste your Google Apps Script /exec URL here ======
+const CONFIG = {
+  SCRIPT_URL: ''   // e.g. 'https://script.google.com/macros/s/XXXXXXXX/exec'
+};
+// ==================================================================
+
+const SIL = '#0a0c16';
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height, CX = W/2, CY = H/2;
+const BASE = 300;
+const ROUNDS = 20;
+
+// ---------- pixel-art silhouette drawing ----------
+const SC = 4, CS = 100*SC;
+function circ(x,cx,cy,r){ x.beginPath(); x.arc(cx*SC,cy*SC,r*SC,0,Math.PI*2); x.fill(); }
+function ell(x,cx,cy,rx,ry){ x.save(); x.translate(cx*SC,cy*SC); x.scale(rx,ry); x.beginPath(); x.arc(0,0,SC,0,Math.PI*2); x.fill(); x.restore(); }
+function rect(x,px,py,w,h,r){ x.beginPath(); if(x.roundRect) x.roundRect(px*SC,py*SC,w*SC,h*SC,(r||0)*SC); else x.rect(px*SC,py*SC,w*SC,h*SC); x.fill(); }
+function tri(x,pts){ x.beginPath(); pts.forEach((p,i)=>{const X=p[0]*SC,Y=p[1]*SC; i?x.lineTo(X,Y):x.moveTo(X,Y);}); x.closePath(); x.fill(); }
+
+const ART = {
+  'Shrek': x => { rect(x,13,30,17,8,4); rect(x,70,30,17,8,4); ell(x,26,33,4,5); ell(x,74,33,4,5);
+    rect(x,32,20,36,32,12); tri(x,[[30,50],[70,50],[80,88],[20,88]]); },
+  'Donkey': x => { rect(x,37,6,8,30,3); rect(x,55,6,8,30,3); ell(x,50,46,15,21); rect(x,40,62,20,22,7); ell(x,50,62,11,9); },
+  'Puss in Boots': x => { ell(x,50,66,13,17); tri(x,[[40,74],[51,74],[51,91],[35,91]]); tri(x,[[49,74],[60,74],[65,91],[49,91]]);
+    circ(x,50,44,13); tri(x,[[40,34],[47,34],[42,24]]); tri(x,[[53,34],[60,34],[58,24]]); ell(x,50,25,26,5); rect(x,40,12,20,14,4); tri(x,[[58,19],[84,3],[62,15]]); },
+  'Gingerbread Man': x => { circ(x,50,21,12); rect(x,37,31,26,35,12); rect(x,15,35,22,9,4); rect(x,63,35,22,9,4); rect(x,38,60,9,31,4); rect(x,53,60,9,31,4); },
+  'Dragon': x => {
+    tri(x,[[52,30],[96,15],[85,33],[95,45],[79,49],[89,62],[63,52]]); // membranous wing, scalloped edge
+    ell(x,53,62,19,13);                                    // body
+    tri(x,[[45,70],[61,68],[51,88]]);                      // hind leg
+    tri(x,[[34,64],[48,60],[9,82]]);                       // long tail
+    tri(x,[[5,80],[16,75],[12,90]]);                       // tail spade
+    tri(x,[[42,60],[54,58],[33,32],[25,36]]);              // neck
+    ell(x,25,30,10,7);                                     // head
+    tri(x,[[11,31],[27,26],[23,38]]);                      // snout
+    tri(x,[[27,22],[32,24],[29,11]]); tri(x,[[32,23],[37,26],[38,12]]); // two horns
+  },
+  'Pinocchio': x => { tri(x,[[40,15],[60,15],[52,1]]); rect(x,36,14,28,4,1); circ(x,50,34,12); tri(x,[[60,31],[90,36],[60,42]]); rect(x,39,44,22,35,8); },
+  'Big Bad Wolf': x => { tri(x,[[32,16],[43,16],[35,1]]); tri(x,[[57,16],[68,16],[65,1]]); ell(x,50,19,21,11); ell(x,50,40,14,13); tri(x,[[50,38],[76,46],[50,55]]); tri(x,[[31,50],[69,50],[82,91],[18,91]]); },
+  'Fiona': x => {
+    ell(x,50,30,16,15);                         // hair volume framing the head
+    circ(x,50,23,11);                           // face
+    rect(x,33,32,7,24,3); rect(x,60,32,7,24,3); // long side locks past the shoulders
+    tri(x,[[41,46],[59,46],[55,60],[45,60]]);   // fitted bodice — narrow waist
+    tri(x,[[45,60],[55,60],[80,94],[20,94]]);   // flared gown
+  },
+  'Three Blind Mice': x => { const m=(cx,cy,s)=>{ ell(x,cx,cy,9*s,6*s); circ(x,cx-6*s,cy-6*s,4*s); circ(x,cx+6*s,cy-6*s,4*s); tri(x,[[cx+7*s,cy],[cx+22*s,cy-3*s],[cx+7*s,cy+3*s]]); }; m(27,56,1); m(50,49,1.15); m(74,56,1); },
+  'Magic Mirror': x => { tri(x,[[43,9],[57,9],[50,0]]); circ(x,50,7,3); ell(x,50,42,20,28); rect(x,39,68,22,6,2); tri(x,[[46,72],[54,72],[62,89],[38,89]]); },
+  'Fairy Godmother': x => { ell(x,26,48,8,15); ell(x,74,48,8,15); circ(x,50,22,11); rect(x,44,10,12,8,4);
+    tri(x,[[38,50],[62,50],[76,90],[24,90]]); rect(x,70,24,2.5,20,1); tri(x,[[71,9],[65,20],[77,20]]); },
+  'Prince Charming': x => { circ(x,50,24,10); rect(x,56,18,11,24,5); rect(x,40,34,20,30,6); rect(x,40,62,8,26,3); rect(x,52,62,8,26,3);
+    tri(x,[[62,40],[65,40],[84,8]]); rect(x,59,38,11,3,1); },
+  'Humpty Dumpty': x => { rect(x,39,8,22,12,2); ell(x,50,22,17,3); ell(x,50,50,20,26); rect(x,18,48,18,6,3); rect(x,64,48,18,6,3); rect(x,40,72,7,17,3); rect(x,53,72,7,17,3); },
+  'Red Riding Hood': x => { tri(x,[[30,40],[70,40],[82,92],[18,92]]); circ(x,50,28,16); ell(x,77,64,8,6); rect(x,71,58,12,4,2); },
+  'Robin Hood': x => { ell(x,50,20,12,6); tri(x,[[56,18],[80,4],[60,14]]); circ(x,50,32,9); rect(x,40,40,20,30,6);
+    tri(x,[[70,22],[80,45],[70,68]]); },
+  'Wicked Witch': x => { ell(x,50,32,22,5); tri(x,[[36,32],[64,32],[54,2]]); circ(x,50,42,10); tri(x,[[36,50],[64,50],[74,88],[26,88]]);
+    tri(x,[[16,86],[22,80],[82,54]]); tri(x,[[10,90],[24,74],[26,92]]); },
+  'Unicorn': x => { rect(x,34,50,18,36,6); ell(x,52,46,16,12); ell(x,66,52,9,7); tri(x,[[44,34],[52,34],[48,24]]); tri(x,[[54,30],[60,30],[64,6]]);
+    tri(x,[[36,44],[28,54],[38,54]]); tri(x,[[35,56],[27,66],[37,66]]); tri(x,[[35,68],[28,78],[38,78]]); },
+  'Frog Prince': x => { ell(x,50,60,22,15); circ(x,37,42,9); circ(x,63,42,9); rect(x,43,28,14,7,2); tri(x,[[43,28],[47,18],[50,28]]); tri(x,[[50,28],[53,18],[57,28]]);
+    tri(x,[[18,66],[34,58],[24,80]]); tri(x,[[82,66],[66,58],[76,80]]); },
+  'Captain Hook': x => { rect(x,42,10,16,9,2); ell(x,50,19,20,5); tri(x,[[30,19],[42,19],[30,8]]); tri(x,[[58,19],[70,19],[70,8]]); circ(x,50,30,9);
+    rect(x,38,38,24,34,4); rect(x,40,70,8,18,3); rect(x,52,70,8,18,3); rect(x,66,44,4,12,1); tri(x,[[62,56],[72,56],[67,66]]); },
+  'Rapunzel': x => { circ(x,50,20,11); tri(x,[[38,40],[62,40],[72,82],[28,82]]); circ(x,66,28,5); circ(x,69,40,5); circ(x,70,52,5); circ(x,68,64,5); circ(x,65,76,4); circ(x,63,86,3); },
+};
+
+// Lord Farquaad-style taunts, fired whenever a creature escapes
+const INSULTS = [
+  "Pathetic! Some creatures escape, some are caught... but that failure was ALL you.",
+  "Do you know WHO I am? Clearly you don't know WHO that was.",
+  "A blind mouse could've named it — and I would know, I own three.",
+  "That was a PERFECT answer. Perfectly, magnificently WRONG.",
+  "Even Duloc's dullest jester could've captured that one.",
+  "You there! Yes, you — the disappointment in the mirror.",
+  "My Magic Mirror shows fairer guesses than THAT.",
+  "Escaped! And you call yourself a hunter? I call myself embarrassed.",
+  "That is the height of failure — and I know a thing or two about height.",
+  "Guards! ...oh, right. It's just you. Hopeless.",
+  "I did not build a perfect kingdom to watch THIS.",
+  "Wrong! I shall have to find someone... taller of intellect.",
+  "That shadow made a royal fool of you. And I don't share my titles.",
+  "Ugh. Take a good look — that is the face of defeat.",
+];
+let lastInsult = -1;
+function pickInsult(){ let i; do{ i=Math.floor(Math.random()*INSULTS.length); } while(i===lastInsult && INSULTS.length>1); lastInsult=i; return INSULTS[i]; }
+
+// A little lore shown once a creature's identity is revealed
+const FACTS = {
+  'Shrek':"A grumpy but soft-hearted ogre who just wants his swamp all to himself.",
+  'Donkey':"A chatty, loyal donkey who never, ever stops talking.",
+  'Puss in Boots':"A swashbuckling cat with a feathered hat and irresistible big eyes.",
+  'Gingerbread Man':"A brave little cookie — just don't touch the gumdrop buttons!",
+  'Dragon':"A fearsome fire-breathing dragon with a surprisingly tender heart.",
+  'Pinocchio':"A wooden puppet whose nose grows longer with every fib he tells.",
+  'Big Bad Wolf':"The huffing, puffing wolf — often caught wearing grandma's nightie.",
+  'Fiona':"A princess by day and an ogre by night, and far tougher than she looks.",
+  'Three Blind Mice':"Three sightless mice who bumble around the swamp together.",
+  'Magic Mirror':"The all-knowing mirror who answers the kingdom's biggest questions.",
+  'Fairy Godmother':"A glamorous fairy who grants wishes — for exactly the right price.",
+  'Prince Charming':"A vain prince convinced he's the hero of every fairy tale.",
+  'Humpty Dumpty':"An egg who sat on a wall — and famously took a great fall.",
+  'Red Riding Hood':"A girl in a red hood, off through the woods to grandma's house.",
+  'Robin Hood':"An outlaw archer who robs from the rich to give to the poor.",
+  'Wicked Witch':"A cackling, broom-riding witch with a real taste for trouble.",
+  'Unicorn':"A magical horse crowned with a single spiraled horn.",
+  'Frog Prince':"A prince stuck in frog form, still waiting on a royal kiss.",
+  'Captain Hook':"A pirate captain with a hook for a hand and a fear of crocodiles.",
+  'Rapunzel':"A tower-bound maiden with impossibly, impossibly long hair.",
+};
+
+const TARGETS = Object.keys(ART);   // 20 characters that can appear as silhouettes
+// extra plausible answers that only ever appear as decoys (no art needed)
+const DECOYS = ['Mongo','Peter Pan','Snow White','Cinderella','Sleeping Beauty','Rumpelstiltskin','Tinker Bell','The Muffin Man','Three Little Pigs','King Harold'];
+const ALLNAMES = [...TARGETS, ...DECOYS];
+
+// pre-render silhouettes
+const CHAR = {};
+for (const name of TARGETS){
+  const c=document.createElement('canvas'); c.width=CS; c.height=CS;
+  const x=c.getContext('2d'); x.fillStyle=SIL; ART[name](x); CHAR[name]=c;
+}
+const pbuf=document.createElement('canvas'); const pctx=pbuf.getContext('2d');
+const lit=document.createElement('canvas'); const lctx=lit.getContext('2d'); // shaded silhouette buffer
+
+// ---------- detailed COLOUR portraits (shown when a creature is revealed) ----------
+function eyes(x,lx,ly,rx,ry,r){ x.fillStyle='#ffffff'; circ(x,lx,ly,r); circ(x,rx,ry,r);
+  x.fillStyle='#15121c'; circ(x,lx+r*0.25,ly+r*0.2,r*0.55); circ(x,rx+r*0.25,ry+r*0.2,r*0.55); }
+function mouth(x,cx,cy,w,col){ x.fillStyle=col||'#3a2a2a'; rect(x,cx-w/2,cy,w,2.2,1); }
+const BASECOLOR={
+  'Shrek':'#7ba548','Donkey':'#9aa0ac','Puss in Boots':'#d79a4e','Gingerbread Man':'#c07f3a',
+  'Dragon':'#c1506a','Pinocchio':'#e3b784','Big Bad Wolf':'#8b909a','Fiona':'#3f7d3a',
+  'Three Blind Mice':'#9a8f86','Magic Mirror':'#6b7fb0','Fairy Godmother':'#7fb3e6',
+  'Prince Charming':'#4a6cc0','Humpty Dumpty':'#f0e4c4','Red Riding Hood':'#c0392b',
+  'Robin Hood':'#3f7a3a','Wicked Witch':'#6ea24f','Unicorn':'#e9edf5','Frog Prince':'#5aa64a',
+  'Captain Hook':'#8a3b52','Rapunzel':'#e6c23a',
+};
+const DETAIL={
+  'Shrek':x=>{ x.fillStyle='#5f7a34'; rect(x,13,30,17,8,4); rect(x,70,30,17,8,4);
+    x.fillStyle='#6b4a2a'; tri(x,[[30,60],[70,60],[80,88],[20,88]]); eyes(x,44,33,56,33,3); mouth(x,50,42,12); },
+  'Donkey':x=>{ x.fillStyle='#c9ccd2'; ell(x,50,62,10,8); x.fillStyle='#6b6f78'; rect(x,39,8,6,26,3); rect(x,56,8,6,26,3);
+    eyes(x,45,42,55,42,2.6); x.fillStyle='#2a2d33'; circ(x,47,63,1.6); circ(x,53,63,1.6); },
+  'Puss in Boots':x=>{ x.fillStyle='#7a4a24'; ell(x,50,25,26,5); rect(x,40,12,20,14,4);
+    x.fillStyle='#c0392b'; tri(x,[[58,19],[84,3],[62,15]]);
+    x.fillStyle='#5a3418'; tri(x,[[40,74],[51,74],[51,91],[35,91]]); tri(x,[[49,74],[60,74],[65,91],[49,91]]);
+    eyes(x,44,45,56,45,3.4); mouth(x,50,50,5,'#3a2a1a'); },
+  'Gingerbread Man':x=>{ x.fillStyle='#f4e6cf'; rect(x,15,35,22,3,1); rect(x,38,60,9,3,1); rect(x,53,60,9,3,1);
+    eyes(x,46,20,54,20,2.4); x.fillStyle='#e0483a'; circ(x,50,40,2.4); circ(x,50,47,2.4); circ(x,50,54,2.4);
+    x.fillStyle='#5a3a1a'; rect(x,46,26,8,2,1); },
+  'Dragon':x=>{ x.fillStyle='#8a3550'; tri(x,[[52,30],[96,15],[85,33],[95,45],[79,49],[89,62],[63,52]]);
+    x.fillStyle='#eecf7a'; tri(x,[[27,22],[32,24],[29,11]]); tri(x,[[32,23],[37,26],[38,12]]);
+    x.fillStyle='#ffd23f'; circ(x,23,29,2.2); x.fillStyle='#111'; circ(x,23,29,1.0); },
+  'Pinocchio':x=>{ x.fillStyle='#3a63c0'; tri(x,[[40,15],[60,15],[52,1]]); rect(x,36,14,28,4,1);
+    x.fillStyle='#8a5a2a'; rect(x,44,24,12,4,2); x.fillStyle='#d9a06a'; tri(x,[[60,31],[90,36],[60,42]]);
+    eyes(x,45,33,53,33,2.4); },
+  'Big Bad Wolf':x=>{ x.fillStyle='#e39ab5'; ell(x,50,19,21,11); x.fillStyle='#6f7079'; tri(x,[[50,38],[76,46],[50,55]]);
+    x.fillStyle='#4f7bb0'; tri(x,[[31,50],[69,50],[82,91],[18,91]]); eyes(x,45,39,55,39,2.6); x.fillStyle='#111'; circ(x,66,45,1.6); },
+  'Fiona':x=>{ x.fillStyle='#b5502a'; ell(x,50,30,16,15); x.fillStyle='#e6b58a'; circ(x,50,23,10);
+    x.fillStyle='#b5502a'; rect(x,33,32,7,24,3); rect(x,60,32,7,24,3); eyes(x,46,23,54,23,2.2); mouth(x,50,28,5,'#a3435a'); },
+  'Three Blind Mice':x=>{ x.fillStyle='#15121c'; for(const cx of [27,50,74]){ rect(x,cx-6,45,12,2.5,1); circ(x,cx-3,47,2.2); circ(x,cx+3,47,2.2); }
+    x.fillStyle='#e0a0b0'; circ(x,27,58,1.6); circ(x,50,51,1.6); circ(x,74,58,1.6); },
+  'Magic Mirror':x=>{ x.fillStyle='#d9b24a'; ell(x,50,42,20,28); x.fillStyle='#3a5a86'; ell(x,50,42,15,23);
+    x.fillStyle='#c9dcff'; tri(x,[[42,26],[48,50],[45,24]]); },
+  'Fairy Godmother':x=>{ x.fillStyle='#d7a0d0'; ell(x,26,48,8,15); ell(x,74,48,8,15);
+    x.fillStyle='#e6b58a'; circ(x,50,22,10); x.fillStyle='#c9c9d0'; rect(x,44,10,12,8,4);
+    x.fillStyle='#ffe14a'; tri(x,[[71,9],[65,20],[77,20]]); eyes(x,46,22,54,22,2.2); },
+  'Prince Charming':x=>{ x.fillStyle='#e6b58a'; circ(x,50,24,9); x.fillStyle='#caa63a'; rect(x,56,18,11,24,5);
+    x.fillStyle='#c9ccd4'; tri(x,[[62,40],[65,40],[84,8]]); rect(x,59,38,11,3,1); eyes(x,47,24,53,24,2.0); },
+  'Humpty Dumpty':x=>{ x.fillStyle='#1a1a22'; rect(x,39,8,22,12,2); ell(x,50,22,17,3);
+    x.fillStyle='#c0392b'; tri(x,[[45,32],[50,38],[46,41]]); tri(x,[[55,32],[50,38],[54,41]]);
+    eyes(x,45,40,55,40,2.6); mouth(x,50,47,7); },
+  'Red Riding Hood':x=>{ x.fillStyle='#8f2a20'; circ(x,50,28,16); x.fillStyle='#f0d0b0'; circ(x,50,33,8);
+    x.fillStyle='#8a5a2a'; ell(x,77,64,8,6); eyes(x,47,33,53,33,1.9); },
+  'Robin Hood':x=>{ x.fillStyle='#2e5e2c'; ell(x,50,20,12,6); x.fillStyle='#c0392b'; tri(x,[[56,18],[80,4],[60,14]]);
+    x.fillStyle='#e6b58a'; circ(x,50,32,8); x.fillStyle='#6b4a2a'; tri(x,[[70,22],[80,45],[70,68]]); eyes(x,47,32,53,32,2.0); },
+  'Wicked Witch':x=>{ x.fillStyle='#1a1526'; ell(x,50,32,22,5); tri(x,[[36,32],[64,32],[54,2]]);
+    x.fillStyle='#7a5a2a'; tri(x,[[16,86],[22,80],[82,54]]); x.fillStyle='#c9a24a'; tri(x,[[10,90],[24,74],[26,92]]);
+    eyes(x,46,41,54,41,2.2); x.fillStyle='#3a5a24'; circ(x,55,46,1.4); },
+  'Unicorn':x=>{ x.fillStyle='#ffd23f'; tri(x,[[54,30],[60,30],[64,6]]);
+    x.fillStyle='#d7a0d0'; tri(x,[[36,44],[28,54],[38,54]]); tri(x,[[35,56],[27,66],[37,66]]); tri(x,[[35,68],[28,78],[38,78]]);
+    x.fillStyle='#ffffff'; ell(x,66,52,9,7); x.fillStyle='#15121c'; circ(x,57,44,2.0); circ(x,66,53,1.4); },
+  'Frog Prince':x=>{ x.fillStyle='#ffffff'; circ(x,37,42,6); circ(x,63,42,6); x.fillStyle='#15121c'; circ(x,37,42,3); circ(x,63,42,3);
+    x.fillStyle='#ffd23f'; rect(x,43,28,14,7,2); tri(x,[[43,28],[47,18],[50,28]]); tri(x,[[50,28],[53,18],[57,28]]);
+    x.fillStyle='#2a5a24'; rect(x,40,60,20,2.2,1); },
+  'Captain Hook':x=>{ x.fillStyle='#1a1a24'; rect(x,42,10,16,9,2); ell(x,50,19,20,5); tri(x,[[30,19],[42,19],[30,8]]); tri(x,[[58,19],[70,19],[70,8]]);
+    x.fillStyle='#e6b58a'; circ(x,50,30,8); x.fillStyle='#c9ccd4'; rect(x,66,44,4,12,1); tri(x,[[62,56],[72,56],[67,66]]); eyes(x,47,30,53,30,2.0); },
+  'Rapunzel':x=>{ x.fillStyle='#e6c23a'; circ(x,66,28,5); circ(x,69,40,5); circ(x,70,52,5); circ(x,68,64,5); circ(x,65,76,4); circ(x,63,86,3);
+    x.fillStyle='#f0d0b0'; circ(x,50,20,10); x.fillStyle='#5a7d3a'; tri(x,[[38,40],[62,40],[72,82],[28,82]]); eyes(x,47,20,53,20,2.0); },
+};
+const PORTRAIT={};
+for(const name of TARGETS){
+  const c=document.createElement('canvas'); c.width=CS; c.height=CS; const x=c.getContext('2d');
+  x.fillStyle=BASECOLOR[name]||'#8f95a2'; ART[name](x);   // whole character in its main colour
+  if(DETAIL[name]) DETAIL[name](x);                        // features & accents on top
+  // crisp dark outline so the coloured shapes read clearly
+  x.save(); x.globalCompositeOperation='destination-over'; x.fillStyle='#0c0e16';
+  x.translate(CS/2,CS/2); x.scale(1.03,1.03); x.translate(-CS/2,-CS/2); ART[name](x); x.restore();
+  PORTRAIT[name]=c;
+}
+
+// ---------- audio ----------
+const NF={C:261.63,'C#':277.18,D:293.66,'D#':311.13,E:329.63,F:349.23,'F#':369.99,G:392.0,'G#':415.3,A:440.0,'A#':466.16,B:493.88};
+function freq(n){ const m=/^([A-G]#?)(\d)$/.exec(n); return NF[m[1]]*Math.pow(2,(+m[2])-4); }
+// Bright, upbeat late-90s pop-punk feel (I–V–vi–IV: C–G–Am–F) — the same anthemic
+// energy as the Shrek movie song, but an ORIGINAL melody (not the copyrighted tune).
+const LEAD=[
+ 'E5','G5','E5','C5','E5','G5','A5','G5',
+ 'D5','G5','D5','B4','D5','G5','B5','G5',
+ 'C5','E5','C5','A4','C5','E5','A5','E5',
+ 'A4','C5','F5','C5','A4','F4','A4','C5'];
+const ROOTS=['C2','G2','A2','F2'], FIFTHS=['G2','D3','E3','C3'];
+const BASS=[]; for(let b=0;b<4;b++) for(let s=0;s<8;s++) BASS.push(s%2===0?(s%4===0?ROOTS[b]:FIFTHS[b]):null);
+// busy arpeggio harmony over each bar's chord
+const CHORD=[['C4','E4','G4','C5'],['G3','B3','D4','G4'],['A3','C4','E4','A4'],['F3','A3','C4','F4']];
+const ARP=[]; for(let b=0;b<4;b++) for(let s=0;s<8;s++) ARP.push(CHORD[b][s%4]);
+
+const Chip = {
+  ac:null, master:null, musicGain:null, playing:false, step:0, nextT:0, timer:null, stepDur:0.132, enabled:true,
+  init(){ if(this.ac) return; const AC=window.AudioContext||window.webkitAudioContext; this.ac=new AC();
+    this.master=this.ac.createGain(); this.master.gain.value=0.9; this.master.connect(this.ac.destination);
+    this.musicGain=this.ac.createGain(); this.musicGain.gain.value=0.19; this.musicGain.connect(this.master); },
+  resume(){ if(this.ac && this.ac.state==='suspended') this.ac.resume(); },
+  voice(f,t,dur,type,vol,dest){ const o=this.ac.createOscillator(), g=this.ac.createGain(); o.type=type; o.frequency.setValueAtTime(f,t);
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(dest||this.master); o.start(t); o.stop(t+dur+0.02); },
+  noise(t,dur,vol,dest){ const n=Math.floor(this.ac.sampleRate*dur); const buf=this.ac.createBuffer(1,n,this.ac.sampleRate);
+    const d=buf.getChannelData(0); for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+    const src=this.ac.createBufferSource(); src.buffer=buf; const g=this.ac.createGain(); g.gain.value=vol;
+    const hp=this.ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1200; src.connect(hp); hp.connect(g); g.connect(dest||this.master); src.start(t); },
+  kick(t){ const o=this.ac.createOscillator(), g=this.ac.createGain(); o.type='sine'; o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(45,t+0.12);
+    g.gain.setValueAtTime(0.5,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.14); o.connect(g); g.connect(this.master); o.start(t); o.stop(t+0.16); },
+  startMusic(){ if(!this.enabled||this.playing) return; this.init(); this.resume(); this.playing=true; this.step=0; this.nextT=this.ac.currentTime+0.06; this.timer=setInterval(()=>this.sched(),25); },
+  stopMusic(){ this.playing=false; if(this.timer){clearInterval(this.timer); this.timer=null;} },
+  sched(){ if(!this.playing) return; const look=this.ac.currentTime+0.12;
+    while(this.nextT<look){ const i=this.step%32, t=this.nextT, sd=this.stepDur;
+      const ln=LEAD[i]; if(ln) this.voice(freq(ln),t,sd*0.9,'square',0.2,this.musicGain);
+      const an=ARP[i]; if(an) this.voice(freq(an)*2,t,sd*0.55,'triangle',0.08,this.musicGain);
+      const bn=BASS[i]; if(bn) this.voice(freq(bn),t,sd*1.6,'triangle',0.5,this.musicGain);
+      if(i%4===0) this.kick(t); if(i%8===6) this.kick(t);            // driving kick + syncopated pickup
+      if(i%4===2) this.noise(t,0.13,0.22,this.musicGain);            // backbeat snare
+      this.noise(t,0.025,(i%2?0.07:0.04),this.musicGain);           // offbeat-accented hats
+      this.nextT+=sd; this.step++; } },
+  arp(notes,type,vol){ if(!this.enabled) return; this.init(); this.resume(); let t=this.ac.currentTime; notes.forEach(n=>{ this.voice(freq(n),t,0.13,type||'square',vol||0.3); t+=0.06; }); },
+  capture(){ this.arp(['E5','A5','C6','E6','A6'],'square',0.28); },
+  wrong(){ if(!this.enabled) return; this.init(); this.resume(); const t=this.ac.currentTime; const o=this.ac.createOscillator(), g=this.ac.createGain();
+    o.type='sawtooth'; o.frequency.setValueAtTime(220,t); o.frequency.exponentialRampToValueAtTime(70,t+0.35);
+    g.gain.setValueAtTime(0.28,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.4); o.connect(g); g.connect(this.master); o.start(t); o.stop(t+0.42); },
+  win(){ this.arp(['C5','E5','G5','C6','E6','G6','C7'],'square',0.28); },
+  levelup(){ this.arp(['C5','E5','G5','C6'],'square',0.26); },
+  over(){ this.arp(['A4','G4','F4','E4','D4','C4'],'triangle',0.3); },
+  click(){ if(!this.enabled) return; this.init(); this.resume(); this.voice(660,this.ac.currentTime,0.05,'square',0.18); },
+};
+
+// ---------- state ----------
+const state = { scene:'title', score:0, deck:[], idx:0, lives:3, target:null, choices:[], tStart:0, tLimit:0, answered:false, captures:0, streak:0, lastPattern:null };
+
+// ---------- difficulty (steps UP every 3 characters, and creeps up each round) ----------
+const TIER_SIZE=3;
+function tier(){ return Math.floor(state.idx/TIER_SIZE); }        // 0..6 over 20 rounds
+function maxTier(){ return Math.floor((ROUNDS-1)/TIER_SIZE); }    // 6
+function difficulty(){                                            // 0..1, harder every round
+  const base = maxTier() ? tier()/maxTier() : 0;                  // stepped by level
+  const creep = (state.idx % TIER_SIZE) * 0.035;                  // small rise within a level
+  return Math.min(1, 0.18 + base*0.92 + creep);                   // floor 0.18 -> level 1 already tricky
+}
+function numChoices(){ const t=tier(); return t<=0?3 : t<=2?4 : 5; }
+function timeLimit(){ return (6.5 - difficulty()*3.7)*1000; }     // ~6.2s down to ~2.8s — shorter & steeper
+
+let RP=null;
+function rollObscure(){
+  const d=difficulty(); const r=state.idx+1; const dir=(r%2===0)?1:-1;
+  // No fog blur any more — the shadow gets more and more PIXELATED as difficulty rises.
+  RP={ d,
+    res: Math.round(104 - d*90),                                  // 104 crisp -> ~14 heavily pixelated
+    rot: dir*(0.12 + d*0.62)*(0.7+(r*37%40)/100),                 // always a tilt, up to ~44°
+    scale: 1 - d*0.5,                                             // shrinks to 0.5
+    occ: [],                                                      // fog removed
+    warp: 0,
+    flip: d>0.32 && ((state.idx*7+3)%2===0),                      // mirror-flip on harder rounds
+    run: true,
+  };
+  // pick a movement pattern for this round (no immediate repeats)
+  let pat; do{ pat=PATTERNS[Math.floor(Math.random()*PATTERNS.length)]; } while(pat===state.lastPattern && PATTERNS.length>1);
+  state.lastPattern=pat; RP.pattern=pat;
+}
+
+// ---------- render (murky swamp scene + moving creatures) ----------
+let animT=0;
+// the different ways a creature can move while you try to name it
+const PATTERNS=['runLR','runUD','diagonal','circle','zigzag','pulse','spin','flash'];
+let heroX=CX, heroY=CY, heroBounce=0, heroRot=0, heroScale=1, heroAlpha=1, heroFace=1;
+function computeHero(){
+  // defaults (used during reveal / menus)
+  heroX=CX; heroY=CY; heroBounce=Math.sin(animT*2)*4; heroRot=0; heroScale=1; heroAlpha=1; heroFace=1;
+  if(!(state.scene==='playing' && RP && RP.pattern)) return;
+  const d=RP.d, t=animT, spd=0.8 + d*1.3;                 // everything moves faster at higher difficulty
+  const tri=(p)=>{ const ph=p%2; return ph<1?ph:2-ph; };  // 0..1..0 constant-speed sweep
+  switch(RP.pattern){
+    case 'runLR': { const p=t*0.5*spd, tp=tri(p); heroX=CX+(tp*2-1)*122; heroFace=(p%2)<1?1:-1;
+      const g=p*8; heroBounce=-Math.abs(Math.sin(g))*16; heroRot=Math.sin(g)*0.10; break; }
+    case 'runUD': { const p=t*0.55*spd, tp=tri(p); heroY=CY+(tp*2-1)*95; heroBounce=0; heroRot=Math.sin(p*8)*0.05; break; }
+    case 'diagonal': { const p=t*0.48*spd, tp=tri(p); heroX=CX+(tp*2-1)*120; heroY=CY+(tp*2-1)*72; heroFace=(p%2)<1?1:-1;
+      heroBounce=-Math.abs(Math.sin(p*8))*10; break; }
+    case 'circle': { const a=t*1.15*spd; heroX=CX+Math.cos(a)*112; heroY=CY+Math.sin(a)*72; heroFace=Math.cos(a)>=0?1:-1; heroBounce=0; break; }
+    case 'zigzag': { const p=t*0.62*spd, tp=tri(p); heroX=CX+(tp*2-1)*122; heroFace=(p%2)<1?1:-1; heroY=CY+Math.sin(t*6*spd)*42; heroBounce=0; break; }
+    case 'pulse': { heroScale=0.65+(Math.sin(t*2.3*spd)*0.5+0.5)*0.75; heroX=CX+Math.sin(t*0.5*spd)*30; break; } // shrink & grow
+    case 'spin': { heroRot=t*1.9*spd; heroX=CX+Math.sin(t*0.5*spd)*44; break; }                                 // spin round and round
+    case 'flash': { heroX=CX+Math.sin(t*0.6*spd)*48; heroAlpha=Math.pow(Math.max(0,Math.sin(t*2.1*spd)),0.7); break; } // flash in & out
+  }
+}
+function drawStage(){
+  // murky swamp sky
+  const sky=ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#0c1a12'); sky.addColorStop(0.38,'#183021'); sky.addColorStop(0.6,'#365233'); sky.addColorStop(0.72,'#557141'); sky.addColorStop(1,'#31482a');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+  // hazy greenish moon
+  ctx.save(); ctx.shadowColor='rgba(206,232,168,0.85)'; ctx.shadowBlur=48; ctx.fillStyle='#e2eeba';
+  ctx.beginPath(); ctx.arc(W*0.78,H*0.18,27,0,Math.PI*2); ctx.fill(); ctx.restore();
+  // faint haze specks
+  ctx.fillStyle='rgba(220,240,190,0.5)';
+  for(let i=0;i<16;i++){ const sx=(i*89+23)%W, sy=(i*47+9)%Math.floor(H*0.4); ctx.globalAlpha=0.2+0.3*(0.5+0.5*Math.sin(animT*1.5+i)); ctx.fillRect(sx,sy,2,2); }
+  ctx.globalAlpha=1;
+  // gnarled cypress trees draped in moss (frame the sides)
+  drawCypress(46, H*0.66, 1.0, '#0f1e14');
+  drawCypress(W-38, H*0.68, 1.15, '#0c1a11');
+  // back tree-line ridge
+  ctx.fillStyle='rgba(16,35,21,0.65)'; ctx.beginPath(); ctx.moveTo(0,H*0.67);
+  for(let x=0;x<=W;x+=34){ const h=H*0.67-(12+((x*13)%26)); ctx.lineTo(x,h); ctx.lineTo(x+17,H*0.67); }
+  ctx.lineTo(W,H*0.74); ctx.lineTo(0,H*0.74); ctx.closePath(); ctx.fill();
+  // low mist over the waterline
+  { const my=H*0.68+Math.sin(animT*0.6)*5; const g=ctx.createLinearGradient(0,my-26,0,my+26);
+    g.addColorStop(0,'rgba(200,220,180,0)'); g.addColorStop(0.5,'rgba(206,224,188,0.30)'); g.addColorStop(1,'rgba(200,220,180,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,my-26,W,52); }
+  // spotlight FOLLOWS the running creature so it stays readable
+  const sp=ctx.createRadialGradient(heroX,heroY+8,20,heroX,heroY+8,250);
+  sp.addColorStop(0,'rgba(228,242,182,0.5)'); sp.addColorStop(0.6,'rgba(182,212,150,0.16)'); sp.addColorStop(1,'rgba(182,212,150,0)');
+  ctx.fillStyle=sp; ctx.fillRect(0,0,W,H);
+  // ---- swamp water (foreground) ----
+  const wtop=H*0.74;
+  const wg=ctx.createLinearGradient(0,wtop,0,H);
+  wg.addColorStop(0,'#2c4a2d'); wg.addColorStop(0.5,'#1b331f'); wg.addColorStop(1,'#0d1e13');
+  ctx.fillStyle=wg; ctx.fillRect(0,wtop,W,H-wtop);
+  // wobbling moon reflection
+  ctx.save(); ctx.globalAlpha=0.45; ctx.fillStyle='#cfe0a0';
+  for(let i=0;i<7;i++){ const ry=wtop+8+i*((H-wtop-8)/7); const rw=18+Math.sin(animT*2+i)*6; ctx.fillRect(W*0.78-rw/2, ry, rw, 3); }
+  ctx.restore();
+  // ripple lines
+  ctx.strokeStyle='rgba(150,190,140,0.22)'; ctx.lineWidth=2;
+  for(let i=0;i<5;i++){ const ry=wtop+14+i*18+Math.sin(animT*1.2+i)*3; ctx.beginPath(); ctx.moveTo(0,ry); ctx.bezierCurveTo(W*0.3,ry-4,W*0.6,ry+4,W,ry); ctx.stroke(); }
+  // lily pads
+  for(const [px,py,pr] of [[W*0.19,wtop+26,16],[W*0.63,wtop+18,13],[W*0.83,wtop+40,18],[W*0.41,wtop+52,15]]){
+    ctx.fillStyle='#2f5730'; ctx.beginPath(); ctx.ellipse(px,py+Math.sin(animT+px)*1.5,pr,pr*0.5,0,0.55,Math.PI*2+0.1); ctx.fill(); }
+  // cattail reeds
+  drawReeds();
+  // fireflies with glow
+  for(let i=0;i<10;i++){ const fx=(i*61+(animT*15*(i%3+1)))%W; const fy=70+(i*57%210)+Math.sin(animT*2+i)*10;
+    ctx.save(); ctx.shadowColor='rgba(190,255,150,0.95)'; ctx.shadowBlur=9; ctx.fillStyle='rgba(225,255,175,0.95)'; ctx.fillRect(Math.floor(fx),Math.floor(fy),3,3); ctx.restore(); }
+}
+function drawCypress(x,base,s,col){
+  ctx.fillStyle=col;
+  ctx.fillRect(x-4*s, base-150*s, 8*s, 150*s);                    // trunk
+  for(const [dx,dy,r] of [[0,-150,26],[-16,-132,19],[16,-130,19],[-4,-172,16]])
+    { ctx.beginPath(); ctx.ellipse(x+dx*s, base+dy*s, r*s, r*0.8*s, 0,0,Math.PI*2); ctx.fill(); }
+  ctx.strokeStyle=col; ctx.lineWidth=2*s;                         // drooping moss
+  for(let m=-2;m<=2;m++){ const mx=x+m*10*s; ctx.beginPath(); ctx.moveTo(mx, base-134*s); ctx.quadraticCurveTo(mx+4, base-114*s, mx+Math.sin(animT+m)*3, base-94*s); ctx.stroke(); }
+}
+function drawReeds(){
+  for(const [rx,rs] of [[15,1.1],[30,0.8],[46,1.0],[W-16,1.15],[W-33,0.85],[W-50,1.0]]){
+    const h=92*rs, sway=Math.sin(animT*1.4+rx)*6*rs;
+    ctx.strokeStyle='#0f2415'; ctx.lineWidth=4*rs; ctx.beginPath(); ctx.moveTo(rx,H); ctx.quadraticCurveTo(rx+sway*0.5, H-h*0.6, rx+sway, H-h); ctx.stroke();
+    ctx.fillStyle='#2a1e12'; ctx.beginPath(); ctx.ellipse(rx+sway, H-h, 4*rs, 11*rs, 0,0,Math.PI*2); ctx.fill();  // cattail
+    ctx.strokeStyle='#123018'; ctx.lineWidth=3*rs; ctx.beginPath(); ctx.moveTo(rx,H); ctx.quadraticCurveTo(rx+14*rs+sway, H-h*0.5, rx+6*rs+sway, H-h*0.9); ctx.stroke(); // blade
+  }
+}
+function drawVignette(){
+  const vg=ctx.createRadialGradient(CX,CY,120,CX,CY,360);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(6,4,18,0.55)');
+  ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+}
+// build a shaded, rim-lit silhouette into the `lit` buffer
+function buildLit(name,res,warp){
+  pbuf.width=res; pbuf.height=res; pctx.imageSmoothingEnabled=false; pctx.clearRect(0,0,res,res); pctx.drawImage(CHAR[name],0,0,res,res);
+  const S=360; lit.width=S; lit.height=S; lctx.imageSmoothingEnabled=false; lctx.clearRect(0,0,S,S);
+  lctx.globalCompositeOperation='source-over';
+  if(warp){ const strips=10, sh=res/strips, dh=S/strips; for(let i=0;i<strips;i++){ const off=Math.sin(i/strips*Math.PI*2+animT)*warp*20; lctx.drawImage(pbuf,0,i*sh,res,sh, off, i*dh, S, dh+1); } }
+  else lctx.drawImage(pbuf,0,0,S,S);
+  // interior vertical shading
+  lctx.globalCompositeOperation='source-in';
+  const g=lctx.createLinearGradient(0,0,0,S); g.addColorStop(0,'#2b3160'); g.addColorStop(0.5,'#141634'); g.addColorStop(1,'#05060f');
+  lctx.fillStyle=g; lctx.fillRect(0,0,S,S);
+  // rim light from upper-left
+  lctx.globalCompositeOperation='source-atop';
+  const rg=lctx.createLinearGradient(0,0,S*0.55,S*0.55); rg.addColorStop(0,'rgba(150,170,255,0.5)'); rg.addColorStop(0.22,'rgba(150,170,255,0)');
+  lctx.fillStyle=rg; lctx.fillRect(0,0,S,S);
+  lctx.globalCompositeOperation='source-over';
+}
+function drawSilhouette(name,opts){
+  buildLit(name,opts.res,opts.warp);
+  const size=BASE*(opts.scale||1)*heroScale;
+  ctx.save();
+  ctx.globalAlpha=heroAlpha;
+  ctx.translate(heroX,heroY+heroBounce);
+  const rot=(opts.rot||0)+heroRot; if(rot) ctx.rotate(rot);
+  if(heroFace<0) ctx.scale(-1,1);
+  ctx.imageSmoothingEnabled=false;
+  ctx.shadowColor='rgba(30,240,170,0.30)'; ctx.shadowBlur=26; ctx.shadowOffsetY=6;
+  ctx.drawImage(lit,-size/2,-size/2,size,size);
+  ctx.restore();
+}
+function drawPortrait(name){
+  const size=BASE*0.96, bob=Math.sin(animT*2)*4;
+  ctx.save(); ctx.translate(CX,CY+bob); ctx.imageSmoothingEnabled=true;
+  ctx.shadowColor='rgba(255,240,180,0.4)'; ctx.shadowBlur=26; ctx.shadowOffsetY=6;
+  ctx.drawImage(PORTRAIT[name], -size/2,-size/2,size,size);
+  ctx.restore();
+}
+function render(){ animT+=1/60; computeHero(); drawStage();
+  if(state.scene==='playing' && state.target && RP) drawSilhouette(state.target,RP);
+  else if(state.scene==='reveal' && state.target) drawPortrait(state.target);
+  drawVignette();
+  requestAnimationFrame(render); }
+
+// ---------- timer ----------
+const timerBar=document.getElementById('timerBar');
+function tickTimer(){ if(state.scene!=='playing'||state.answered) return;
+  const el=performance.now()-state.tStart; const frac=Math.max(0,1-el/state.tLimit);
+  timerBar.style.width=(frac*100)+'%';
+  timerBar.style.background=frac<0.3?'linear-gradient(90deg,#e5484d,#ffb020)':frac<0.6?'linear-gradient(90deg,#ffb020,#ffd54a)':'linear-gradient(90deg,#5ce06a,#ffd54a)';
+  if(el>=state.tLimit){ timeUp(); return; } requestAnimationFrame(tickTimer); }
+
+// ---------- rounds ----------
+const choicesEl=document.getElementById('choices');
+function newRound(){
+  state.scene='playing'; state.answered=false;
+  state.target=state.deck[state.idx];
+  const pool=ALLNAMES.filter(n=>n!==state.target); shuffle(pool);
+  const opts=[state.target,...pool.slice(0,numChoices()-1)]; shuffle(opts); state.choices=opts;
+  rollObscure(); renderChoices(); updateHUD();
+  state.tLimit=timeLimit(); state.tStart=performance.now(); timerBar.style.width='100%';
+  requestAnimationFrame(tickTimer);
+}
+function renderChoices(){
+  choicesEl.innerHTML='';
+  state.choices.forEach((name,i)=>{ const b=document.createElement('button'); b.className='choice'; b.textContent=name; b.dataset.name=name;
+    if(state.choices.length%2===1 && i===state.choices.length-1) b.classList.add('span2');
+    b.onclick=()=>answer(name,b); choicesEl.appendChild(b); });
+}
+function answer(name,btn){
+  if(state.answered) return; state.answered=true;
+  const ok=name===state.target;
+  [...choicesEl.children].forEach(b=>{ b.disabled=true;
+    if(b.dataset.name===state.target) b.classList.add('correct'); else if(b===btn) b.classList.add('wrong'); else b.classList.add('dim'); });
+  if(ok){ state.captures++; state.streak++; const d=difficulty();
+    const timeBonus=Math.max(0,Math.round((1-(performance.now()-state.tStart)/state.tLimit)*80));
+    const gained=Math.round((100+d*120)*(1+Math.min(state.streak,6)*0.15))+timeBonus; state.score+=gained;
+    Chip.capture(); flash('rgba(92,224,106,0.35)'); reveal(true,'CAPTURED!'); }
+  else { state.streak=0; state.lives--; Chip.wrong(); flash('rgba(229,72,77,0.4)'); reveal(false,'ESCAPED!'); }
+  updateHUD();
+}
+function timeUp(){
+  if(state.answered) return; state.answered=true; state.streak=0; state.lives--;
+  [...choicesEl.children].forEach(b=>{ b.disabled=true; if(b.dataset.name===state.target) b.classList.add('correct'); else b.classList.add('dim'); });
+  Chip.wrong(); flash('rgba(229,72,77,0.4)'); updateHUD(); reveal(false,'TIME UP!');
+}
+function reveal(ok,label){
+  state.scene='reveal'; showBanner(label+'  '+state.target, ok, ok?null:pickInsult(), FACTS[state.target]);
+  setTimeout(()=>{ hideBanner();
+    if(state.lives<=0){ endGame(false); return; }
+    state.idx++;
+    if(state.idx>=ROUNDS){ endGame(true); return; }
+    if(state.idx%TIER_SIZE===0) showLevelUp(newRound); else newRound();
+  }, ok?2700:3400);
+}
+function showLevelUp(cb){
+  const lv=tier()+1;
+  showBanner('⚔  LEVEL '+lv+'  ⚔', true, 'The shadows grow deeper...');
+  if(bannerEl) bannerEl.style.color='#ffd54a';
+  flash('rgba(255,213,74,0.22)'); Chip.levelup();
+  setTimeout(()=>{ hideBanner(); cb(); }, 1150);
+}
+
+// ---------- banner ----------
+let bannerEl=null;
+function showBanner(text,ok,sub,detail){ if(!bannerEl){ bannerEl=document.createElement('div');
+  bannerEl.style.cssText='position:absolute;left:0;right:0;top:14px;text-align:center;font-size:14px;z-index:5;text-shadow:2px 2px 0 #000;pointer-events:none;line-height:1.6;padding:0 8px;';
+  document.getElementById('stageWrap').appendChild(bannerEl); }
+  bannerEl.style.color=ok?'#5ce06a':'#ff6b6f';
+  let html=escapeHtml(text);
+  if(sub) html+='<div style="font-size:9px;color:#d3b3ff;margin-top:10px;line-height:1.8;padding:0 6px;">👑 &ldquo;'+escapeHtml(sub)+'&rdquo;</div>';
+  if(detail) html+='<div style="font-size:9px;color:#e6efc6;margin:10px auto 0;line-height:1.9;padding:8px 12px;max-width:400px;background:rgba(10,16,10,0.55);border:2px solid rgba(160,190,120,0.5);border-radius:6px;">'+escapeHtml(detail)+'</div>';
+  bannerEl.innerHTML=html; bannerEl.style.display='block'; }
+function hideBanner(){ if(bannerEl) bannerEl.style.display='none'; }
+
+// ---------- flash ----------
+const flashEl=document.getElementById('flash');
+function flash(color){ flashEl.style.background=color; flashEl.style.transition='none'; flashEl.style.opacity='1';
+  requestAnimationFrame(()=>{ flashEl.style.transition='opacity .5s'; flashEl.style.opacity='0'; }); }
+
+// ---------- hud ----------
+const scoreEl=document.getElementById('score'), roundEl=document.getElementById('round'), livesEl=document.getElementById('lives'), levEl=document.getElementById('levTag');
+function updateHUD(){ scoreEl.textContent=state.score; roundEl.textContent=(Math.min(state.idx+1,ROUNDS))+'/'+ROUNDS;
+  levEl.textContent='LEVEL '+(tier()+1);
+  livesEl.textContent='♥'.repeat(Math.max(0,state.lives))+'·'.repeat(Math.max(0,3-state.lives)); }
+
+// ---------- scenes ----------
+const titleOverlay=document.getElementById('titleOverlay'), overOverlay=document.getElementById('overOverlay'), hud=document.getElementById('hud');
+let hi=0;
+function startGame(){ Chip.init(); Chip.startMusic();
+  state.score=0; state.idx=0; state.lives=3; state.streak=0; state.captures=0; state.deck=shuffle([...TARGETS]).slice(0,ROUNDS);
+  titleOverlay.classList.add('hidden'); overOverlay.classList.add('hidden'); hud.style.display='flex'; updateHUD(); newRound();
+}
+function endGame(won){
+  state.scene='over'; Chip.stopMusic(); won?Chip.win():Chip.over(); hideBanner(); hi=Math.max(hi,state.score);
+  document.getElementById('overTitle').textContent = won ? 'YOU WON!' : 'GAME OVER';
+  document.getElementById('overTitle').style.color = won ? '#5ce06a' : '#ffd54a';
+  document.getElementById('overStats').innerHTML =
+    (won ? `All ${ROUNDS} creatures captured!<br>` : `Captured <b>${state.captures}</b> of ${ROUNDS} creatures.<br>`) +
+    `Score: <b style="color:#ffd54a">${state.score}</b> &nbsp; Best: <b style="color:#ffd54a">${hi}</b>`;
+  overOverlay.classList.remove('hidden'); timerBar.style.width='0%';
+  const inp=document.getElementById('nameInput'); inp.value=lastName(); document.getElementById('saveBtn').disabled=false; document.getElementById('saveBtn').textContent='SAVE SCORE';
+  loadBoard();
+}
+
+// ---------- leaderboard ----------
+// Seeded record to beat: MOLE with 18 captures. Ranking is by captures, then score.
+const SEED=[{name:'MOLE',score:2460,rounds:18}];
+function boardSort(a,b){ return ((b.rounds|0)-(a.rounds|0)) || ((b.score|0)-(a.score|0)); }
+let localBoard=null; try{ localBoard=JSON.parse(localStorage.getItem('capture_lb')||'null'); }catch(e){}
+if(!localBoard || !localBoard.length) localBoard=SEED.slice();
+function lastName(){ try{ return localStorage.getItem('capture_name')||''; }catch(e){ return ''; } }
+function saveLocal(name,score,rounds){ localBoard.push({name,score,rounds}); localBoard.sort(boardSort); localBoard=localBoard.slice(0,10);
+  try{ localStorage.setItem('capture_lb',JSON.stringify(localBoard)); }catch(e){} }
+function topEntry(){ const b=(localBoard&&localBoard.length)?localBoard.slice().sort(boardSort):SEED.slice(); return b[0]; }
+function setRecordLine(t){ t=t||topEntry(); const el=document.getElementById('recordLine'); if(el&&t) el.textContent=`👑 Record to beat: ${t.name} — ${t.rounds|0} captures`; }
+function submitScore(name){
+  name=(name||'ANON').toUpperCase().slice(0,14); try{ localStorage.setItem('capture_name',name); }catch(e){}
+  saveLocal(name,state.score,state.captures);
+  const btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='SAVED ✓';
+  if(CONFIG.SCRIPT_URL){
+    fetch(CONFIG.SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({name,score:state.score,rounds:state.captures})}).catch(()=>{});
+    setTimeout(loadBoard,1200);
+  } else { renderBoard(localBoard,true,name); }
+}
+function loadBoard(){
+  if(!CONFIG.SCRIPT_URL){ renderBoard(localBoard,true,lastName()); return; }
+  const cb='__cb'+Math.floor(performance.now()); let done=false;
+  window[cb]=(data)=>{ done=true; try{ renderBoard((data&&data.top)||[],false,lastName()); }catch(e){ renderBoard(localBoard,true,lastName()); } cleanup(); };
+  const s=document.createElement('script'); s.src=CONFIG.SCRIPT_URL+'?action=top&callback='+cb;
+  s.onerror=()=>{ if(!done){ renderBoard(localBoard,true,lastName()); cleanup(); } };
+  function cleanup(){ delete window[cb]; if(s.parentNode) s.remove(); }
+  document.body.appendChild(s);
+  setTimeout(()=>{ if(!done){ renderBoard(localBoard,true,lastName()); cleanup(); } }, 4000);
+}
+function renderBoard(list,isLocal,me){
+  const el=document.getElementById('board'); el.innerHTML='';
+  document.getElementById('boardTitle').textContent = '🏆 TOP HUNTERS' + (isLocal?' (this device)':'');
+  if(!list || !list.length) list = SEED.slice();
+  list = list.slice().sort(boardSort).slice(0,10);
+  setRecordLine(list[0]);
+  list.forEach((r,i)=>{ const row=document.createElement('div'); row.className='brow'+(me&&r.name===me?' me':'');
+    row.innerHTML=`<span class="rk">${i+1}.</span><span class="nm">${escapeHtml(r.name||'ANON')}</span><span class="sc">${r.rounds|0} caps <span style="color:#7f8fbf">·${r.score|0}</span></span>`; el.appendChild(row); });
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ---------- helpers ----------
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+// ---------- wiring ----------
+document.getElementById('startBtn').onclick=()=>{ Chip.click(); startGame(); };
+document.getElementById('againBtn').onclick=()=>{ Chip.click(); startGame(); };
+document.getElementById('saveBtn').onclick=()=>{ Chip.click(); submitScore(document.getElementById('nameInput').value); };
+document.getElementById('nameInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('saveBtn').click(); } });
+const muteBtn=document.getElementById('muteBtn');
+muteBtn.onclick=()=>{ Chip.enabled=!Chip.enabled; muteBtn.textContent=Chip.enabled?'♪ ON':'♪ OFF';
+  if(Chip.enabled){ if(state.scene!=='title'&&state.scene!=='over') Chip.startMusic(); } else Chip.stopMusic(); };
+window.addEventListener('keydown',e=>{ if(state.scene==='playing'){ const i=parseInt(e.key,10)-1; if(i>=0&&i<state.choices.length){ const b=choicesEl.children[i]; if(b) b.click(); } } });
+
+setRecordLine();
+render();
+})();
+</script>
+</body>
+</html>
